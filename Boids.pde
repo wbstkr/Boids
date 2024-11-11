@@ -65,21 +65,11 @@ public class Boid {
     // +1 means turn right, -1 means turn left
     public int headingDifferential(float newHeading) {
         if(this.heading > 0) {
-            if(newHeading > this.heading) {
-                return 1;
-            } else if(newHeading > this.heading - PI) {
-                return -1;
-            } else {
-                return 1;
-            }
+            if(newHeading < this.heading && newHeading > this.heading - PI) return -1;
+            else return 1;
         } else if(this.heading < 0) {
-            if(newHeading < this.heading) {
-                return -1;
-            } else if(newHeading < this.heading + PI) {
-                return 1;
-            } else {
-                return -1;
-            }
+            if(newHeading > this.heading && newHeading < this.heading + PI) return 1;
+            else return -1;
         } else return 1;
     }
 

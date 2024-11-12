@@ -46,13 +46,22 @@ public class Boid {
     }
 
     public void update(Boid[] boids) {
-        PVector coherence = this.calculateCoherence(boids, 2.0, 1.0, 0.05);
-        PVector separation = this.calculateSeparation(boids, 1.0, 1.0, 0.1);
-        PVector alignment = this.calculateAlignment(boids, 2.0, 1.0, 0.05);
+        PVector coherence   = this.calculateCoherence   (boids, 5.0, 1.0, 0.05);
+        PVector separation  = this.calculateSeparation  (boids, 1.0, 1.0, 0.10);
+        PVector alignment   = this.calculateAlignment   (boids, 2.0, 1.0, 0.05);
 
         this.acceleration.add(coherence);
         this.acceleration.add(separation);
         this.acceleration.add(alignment);
+
+        if(mousePressed) {
+            PVector mousePosition = new PVector(mouseX, mouseY);
+            if(this.position.dist(mousePosition) < this.range * 1.0) {
+                PVector mouseAttraction = PVector.sub(mousePosition, this.position).mult(0.10);
+                if(mouseButton == LEFT) this.acceleration.add(mouseAttraction);
+                if(mouseButton == RIGHT) this.acceleration.sub(mouseAttraction);
+            }
+        }
 
         this.velocity.add(this.acceleration);
         this.velocity.limit(boidSpeed);

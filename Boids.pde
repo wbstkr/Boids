@@ -21,7 +21,7 @@ public void draw(){
     background(0);
 
     for(Boid boid : boids) {
-        boid.update();
+        boid.update(boids);
     }
     for(Boid boid : boids) {
         boid.render();
@@ -39,8 +39,8 @@ public class Boid {
         this.range = 100;
     }
 
-    public void update() {
-        this.coherence();
+    public void update(Boid[] boids) {
+        this.coherence(boids);
         this.separation();
         this.alignment();
 
@@ -50,8 +50,13 @@ public class Boid {
         this.position.add(PVector.fromAngle(this.heading).mult(5));
     }
 
-    public void coherence() {
-        float newHeading = new PVector(mouseX, mouseY).sub(this.position).heading();
+    public void coherence(Boid[] boids) {
+        PVector coherencePoint = new PVector(0, 0);
+        for(Boid boid : boids) {
+            coherencePoint.add(boid.position);
+        }
+        coherencePoint.div(boids.length);
+        float newHeading = PVector.sub(coherencePoint, this.position).heading();
 
         this.heading += turnIncrement * headingDifferential(newHeading);
     }

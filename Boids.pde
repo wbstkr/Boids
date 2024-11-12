@@ -47,6 +47,11 @@ public class Boid {
         this.separation(boids);
         this.alignment(boids);
 
+        PVector mousePos = new PVector(mouseX, mouseY);
+        if(mousePressed && this.position.dist(mousePos) < 300) {
+            this.heading -= turnIncrement * headingDifferential(PVector.sub(mousePos, this.position).heading());
+        }
+
         this.heading += random(-1, 1) * PI / 180.0;
         this.cleanUpHeading();
 
@@ -57,13 +62,18 @@ public class Boid {
 
     public void coherence(Boid[] boids) {
         PVector coherencePoint = new PVector(0, 0);
+        float coherenceIndex = 0;
         for(Boid boid : boids) {
-            coherencePoint.add(boid.position);
+            if(this.position.dist(boid.position) < this.range * 2.0) {
+                coherencePoint.add(boid.position);
+                coherenceIndex += 1;
+            }
         }
-        coherencePoint.div(boids.length);
-        float newHeading = PVector.sub(coherencePoint, this.position).heading();
-
-        this.heading += turnIncrement * headingDifferential(newHeading);
+        if(coherenceIndex > 0) {
+            coherencePoint.div(coherenceIndex);
+            float newHeading = PVector.sub(coherencePoint, this.position).heading();
+            this.heading += turnIncrement * headingDifferential(newHeading);
+        }
     }
 
     public void separation(Boid[] boids) {

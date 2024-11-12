@@ -31,7 +31,6 @@ public final PVector[] boidShape = {
 public final float turnIncrement = PI / 36.0;
 public final float boidSpeed = 10;
 
-// vector based boids
 public class Boid {
     public PVector position;
     public PVector velocity;

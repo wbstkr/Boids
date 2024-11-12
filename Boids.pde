@@ -1,23 +1,14 @@
-public final PVector[] boidShape = {
-    PVector.fromAngle(0).mult(20),
-    PVector.fromAngle(3 * QUARTER_PI).mult(20),
-    PVector.fromAngle(PI).mult(10),
-    PVector.fromAngle(-3 * QUARTER_PI).mult(20)
-};
-public final float turnIncrement = PI / 36.0;
-public final float boidSpeed = 5;
-
 public Boid[] boids;
 
 public void setup(){
     size(1280, 720);
 
-    this.boids = new Boid[500];
+    this.boids = new Boid[1000];
     for(int i = 0; i < boids.length; i++) {
         boids[i] = new Boid();
     }
 
-    // frameRate(1);
+    frameRate(60);
 }
 
 public void draw(){
@@ -27,104 +18,100 @@ public void draw(){
         boid.update(boids);
     }
     for(Boid boid : boids) {
-        boid.render();
+        boid.render(10.0);
     }
 }
 
+public final PVector[] boidShape = {
+    PVector.fromAngle(0),
+    PVector.fromAngle(PI - QUARTER_PI),
+    PVector.fromAngle(PI).mult(0.5),
+    PVector.fromAngle(PI + QUARTER_PI)
+};
+public final float turnIncrement = PI / 36.0;
+public final float boidSpeed = 10;
+
+// vector based boids
 public class Boid {
     public PVector position;
-    public float heading;
+    public PVector velocity;
+    public PVector acceleration;
     public float range;
 
     public Boid() {
         this.position = new PVector(random(width), random(height));
-        this.heading = random(TWO_PI) - PI;
+        this.velocity = PVector.random2D().mult(random(boidSpeed) / 2.0);
+        this.acceleration = new PVector(0, 0);
         this.range = 100;
     }
 
     public void update(Boid[] boids) {
-        this.coherence(boids);
-        this.separation(boids);
-        this.alignment(boids);
+        PVector coherence = this.calculateCoherence(boids, 2.0, 1.0, 0.05);
+        PVector separation = this.calculateSeparation(boids, 1.0, 1.0, 0.1);
+        PVector alignment = this.calculateAlignment(boids, 2.0, 1.0, 0.05);
 
-        PVector mousePos = new PVector(mouseX, mouseY);
-        if(mousePressed && this.position.dist(mousePos) < 300) {
-            this.heading -= turnIncrement * headingDifferential(PVector.sub(mousePos, this.position).heading());
-        }
+        this.acceleration.add(coherence);
+        this.acceleration.add(separation);
+        this.acceleration.add(alignment);
 
-        this.heading += random(-1, 1) * PI / 180.0;
-        this.cleanUpHeading();
-
-        this.position.add(PVector.fromAngle(this.heading).mult(boidSpeed));
-
+        this.velocity.add(this.acceleration);
+        this.velocity.limit(boidSpeed);
+        this.position.add(this.velocity);
         this.screenWrap();
+        this.acceleration.mult(0);
     }
 
-    public void coherence(Boid[] boids) {
+    public PVector calculateCoherence(Boid[] boids, float rangeWeight, float overallWeight, float speedLimit) {
         PVector coherencePoint = new PVector(0, 0);
-        float coherenceIndex = 0;
+        int boidsInRange = 0;
         for(Boid boid : boids) {
-            if(this.position.dist(boid.position) < this.range * 2.0) {
+            if(boid != this && this.position.dist(boid.position) < this.range * rangeWeight) {
                 coherencePoint.add(boid.position);
-                coherenceIndex += 1;
+                boidsInRange++;
             }
         }
-        if(coherenceIndex > 0) {
-            coherencePoint.div(coherenceIndex);
-            float newHeading = PVector.sub(coherencePoint, this.position).heading();
-            this.heading += turnIncrement * headingDifferential(newHeading);
+        if(boidsInRange > 0) {
+            coherencePoint.div(boidsInRange);
+            coherencePoint.sub(this.position);
+            coherencePoint.limit(speedLimit);
+            coherencePoint.mult(overallWeight);
         }
+        return coherencePoint;
     }
 
-    public void separation(Boid[] boids) {
-        PVector steerAwayPoint = new PVector(0, 0);
-        float steerAwayIndex = 0;
+    public PVector calculateSeparation(Boid[] boids, float rangeWeight, float overallWeight, float speedLimit) {
+        PVector separationPoint = new PVector(0, 0);
+        int boidsInRange = 0;
         for(Boid boid : boids) {
-            if(this.position.dist(boid.position) < this.range) {
-                steerAwayPoint.add(boid.position);
-                steerAwayIndex += 1;
+            float distance = this.position.dist(boid.position);
+            if(boid != this && distance < this.range * rangeWeight) {
+                separationPoint.add(PVector.sub(boid.position, this.position).div(distance));
+                boidsInRange++;
             }
         }
-        if(steerAwayIndex > 0) {
-            steerAwayPoint.div(steerAwayIndex);
-            float steerAwayHeading = PVector.sub(steerAwayPoint, this.position).heading();
-            this.heading -= turnIncrement * headingDifferential(steerAwayHeading);
+        if(boidsInRange > 0) {
+            separationPoint.div(boidsInRange);
+            separationPoint.limit(speedLimit);
+            separationPoint.mult(overallWeight);
         }
+        return separationPoint;
     }
 
-    public void alignment(Boid[] boids) {
-        PVector alignmentPoint = new PVector(0, 0);
-        float alignmentIndex = 0;
+    public PVector calculateAlignment(Boid[] boids, float rangeWeight, float overallWeight, float speedLimit) {
+        PVector averageVelocity = new PVector(0, 0);
+        int boidsInRange = 0;
         for(Boid boid : boids) {
-            if(this.position.dist(boid.position) < this.range) {
-                alignmentPoint.add(PVector.fromAngle(boid.heading));
-                alignmentIndex += 1;
+            if(boid != this && this.position.dist(boid.position) < this.range * rangeWeight) {
+                averageVelocity.add(boid.velocity);
+                boidsInRange++;
             }
         }
-        if(alignmentIndex > 0) {
-            alignmentPoint.div(alignmentIndex);
-            this.heading += turnIncrement * headingDifferential(alignmentPoint.heading());
+        if(boidsInRange > 0) {
+            averageVelocity.div(boidsInRange);
+            averageVelocity.limit(speedLimit);
+            averageVelocity.mult(overallWeight);
         }
-    }
-
-    // +1 means turn right, -1 means turn left
-    public int headingDifferential(float newHeading) {
-        if(this.heading > 0) {
-            if(newHeading < this.heading && newHeading > this.heading - PI) return -1;
-            else return 1;
-        } else if(this.heading < 0) {
-            if(newHeading > this.heading && newHeading < this.heading + PI) return 1;
-            else return -1;
-        } else return 1;
-    }
-
-    public void cleanUpHeading() {
-        if(this.heading > PI) {
-            this.heading -= TWO_PI;
-        }
-        if(this.heading < -PI) {
-            this.heading += TWO_PI;
-        }
+        return averageVelocity;
     }
 
     public void screenWrap() {
@@ -142,12 +129,15 @@ public class Boid {
         }
     }
 
-    public void render() {
+    public void render(float scale) {
         noStroke();
         fill(255, 50);
         beginShape();
         for(PVector point : boidShape) {
-            PVector newPoint = point.copy().rotate(this.heading).add(position);
+            PVector newPoint = point.copy()
+                .mult(scale)
+                .rotate(this.velocity.heading())
+                .add(position);
             vertex(newPoint.x, newPoint.y);
         }
         endShape(CLOSE);

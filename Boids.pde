@@ -10,9 +10,9 @@ public final float boidSpeed = 5;
 public Boid[] boids;
 
 public void setup(){
-    size(600, 600);
+    size(1280, 720);
 
-    this.boids = new Boid[100];
+    this.boids = new Boid[500];
     for(int i = 0; i < boids.length; i++) {
         boids[i] = new Boid();
     }
@@ -45,7 +45,7 @@ public class Boid {
     public void update(Boid[] boids) {
         this.coherence(boids);
         this.separation(boids);
-        this.alignment();
+        this.alignment(boids);
 
         this.heading += random(-1, 1) * PI / 180.0;
         this.cleanUpHeading();
@@ -67,7 +67,6 @@ public class Boid {
     }
 
     public void separation(Boid[] boids) {
-        // PVector futurePoint = this.position.copy().add(PVector.fromAngle(this.heading).mult(this.range));
         PVector steerAwayPoint = new PVector(0, 0);
         float steerAwayIndex = 0;
         for(Boid boid : boids) {
@@ -83,7 +82,19 @@ public class Boid {
         }
     }
 
-    public void alignment() {
+    public void alignment(Boid[] boids) {
+        PVector alignmentPoint = new PVector(0, 0);
+        float alignmentIndex = 0;
+        for(Boid boid : boids) {
+            if(this.position.dist(boid.position) < this.range) {
+                alignmentPoint.add(PVector.fromAngle(boid.heading));
+                alignmentIndex += 1;
+            }
+        }
+        if(alignmentIndex > 0) {
+            alignmentPoint.div(alignmentIndex);
+            this.heading += turnIncrement * headingDifferential(alignmentPoint.heading());
+        }
     }
 
     // +1 means turn right, -1 means turn left

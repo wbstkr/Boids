@@ -9,87 +9,78 @@ public class Boid {
   public PVector position;
   public PVector velocity;
   public PVector acceleration;
-  public float separationRange;
-  public float alignmentRange;
-  public float cohesionRange;
-  public float mouseRange;
 
   public Boid() {
     this.position = new PVector(random(width), random(height));
     this.velocity = PVector.random2D().mult(random(MAX_SPEED) / 2.0);
     this.acceleration = new PVector(0, 0);
-    this.separationRange = 100;
-    this.alignmentRange = 100;
-    this.cohesionRange = 100;
-    this.mouseRange = 100;
   }
 
-  public void update(Boid[] boids) {
-    PVector separation = this.getSeparation(boids, 0.05);
-    PVector alignment = this.getAlignment(boids, 0.05);
-    PVector cohesion = this.getCohesion(boids, 0.05);
-    PVector edgeRepel = this.getEdgeRepel(5.0);
-    PVector mouseInteraction = this.getMouseInteraction(1.0);
+  public void calculateAcceleration(Boid[] boids) {
+    PVector cohesion   = this.getCohesion   (boids, 200, 0.01);
+    PVector separation = this.getSeparation (boids, 20, 0.1);
+    PVector alignment  = this.getAlignment  (boids, 100, 0.5);
+    PVector edgeRepel = this.getEdgeRepel(5);
+    PVector mouseInteraction = this.getMouseInteraction(100, 1);
 
     this.acceleration.mult(0);
-    this.acceleration.sub(separation);
+    this.acceleration.add(separation);
     this.acceleration.add(alignment);
     this.acceleration.add(cohesion);
     this.acceleration.add(edgeRepel);
     this.acceleration.add(mouseInteraction);
+  }
 
+  public void update() {
     this.velocity.add(this.acceleration);
     this.velocity.limit(MAX_SPEED);
     this.position.add(this.velocity);
     // this.screenWrap();
   }
 
-  public PVector getSeparation(Boid[] boids, float strength) {
-    PVector separation = new PVector(0, 0);
-    int boidsInRange = 0;
-    for (Boid boid : boids) {
-      if (boid != this && this.position.dist(boid.position) < this.separationRange) {
-        PVector difference = PVector.sub(boid.position, this.position)
-          .setMag(this.separationRange * 0.5 / PVector.dist(boid.position, this.position));
-        separation.add(difference);
-        boidsInRange++;
-      }
-    }
-    if (boidsInRange > 0)
-      separation.mult(strength);
-    return separation;
-  }
-
-  public PVector getAlignment(Boid[] boids, float strength) {
-    PVector averageVelocity = new PVector(0, 0);
-    int boidsInRange = 0;
-    for (Boid boid : boids) {
-      if (boid != this && this.position.dist(boid.position) < this.alignmentRange) {
-        averageVelocity.add(boid.velocity);
-        boidsInRange++;
-      }
-    }
-    if (boidsInRange > 0)
-      averageVelocity.div(boidsInRange)
-        .sub(this.velocity)
-        .mult(strength);
-    return averageVelocity;
-  }
-
-  public PVector getCohesion(Boid[] boids, float strength) {
+  public PVector getCohesion(Boid[] boids, float range, float strength) {
     PVector cohesion = new PVector(0, 0);
     int boidsInRange = 0;
     for (Boid boid : boids) {
-      if (boid != this && this.position.dist(boid.position) < this.cohesionRange) {
-        cohesion.add(boid.position);
-        boidsInRange++;
-      }
+      if (boid != this)
+        if ( this.position.dist(boid.position) < range) {
+          cohesion.add(boid.position);
+          boidsInRange++;
+        };
     }
     if (boidsInRange > 0)
       cohesion.div(boidsInRange)
         .sub(this.position)
         .mult(strength);
     return cohesion;
+  }
+
+  public PVector getSeparation(Boid[] boids, float range, float strength) {
+    PVector separation = new PVector(0, 0);
+    for (Boid boid : boids) {
+      if (boid != this)
+        if (this.position.dist(boid.position) < range)
+          separation.sub(PVector.sub(boid.position, this.position));
+    }
+    separation.mult(strength);
+    return separation;
+  }
+
+  public PVector getAlignment(Boid[] boids, float range, float strength) {
+    PVector averageVelocity = new PVector(0, 0);
+    int boidsInRange = 0;
+    for (Boid boid : boids) {
+      if (boid != this)
+        if (this.position.dist(boid.position) < range) {
+          averageVelocity.add(boid.velocity);
+          boidsInRange++;
+        };
+    }
+    if (boidsInRange > 0)
+      averageVelocity.div(boidsInRange)
+        .sub(this.velocity)
+        .mult(strength);
+    return averageVelocity;
   }
 
   public PVector getEdgeRepel(float strength) {
@@ -105,13 +96,13 @@ public class Boid {
     return edgeRepel;
   }
 
-  public PVector getMouseInteraction(float strength) {
+  public PVector getMouseInteraction(float range, float strength) {
     PVector mouseInteraction = new PVector(0, 0);
     if (mousePressed) {
       PVector mousePosition = new PVector(mouseX, mouseY);
-      if (PVector.dist(mousePosition, this.position) < this.mouseRange) {
+      if (PVector.dist(mousePosition, this.position) < range) {
         mouseInteraction = PVector.sub(mousePosition, this.position)
-          .setMag(strength * this.mouseRange / PVector.dist(mousePosition, this.position));
+          .setMag(strength * range / PVector.dist(mousePosition, this.position));
         if (mouseButton == RIGHT) mouseInteraction.mult(-1.0);
       }
     }

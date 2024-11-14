@@ -18,7 +18,10 @@ public void draw() {
   background(0);
 
   for (Boid boid : this.boids) {
-    boid.update(this.boids);
+    boid.calculateAcceleration(this.boids);
+  }
+  for (Boid boid : this.boids) {
+    boid.update();
   }
   for (Boid boid : this.boids) {
     boid.render(BOID_SCALE);
